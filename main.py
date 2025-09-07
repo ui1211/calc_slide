@@ -423,7 +423,7 @@ class SlideCalc:
 
         # マウスカーソル
         mx, my = pyxel.mouse_x, pyxel.mouse_y
-        pyxel.circ(mx, my, 2, 7)
+        pyxel.circ(mx, my, 1, 7)
 
 
 if __name__ == "__main__":
