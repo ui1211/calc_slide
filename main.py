@@ -426,4 +426,5 @@ class SlideCalc:
         pyxel.circ(mx, my, 2, 7)
 
 
-SlideCalc()
+if __name__ == "__main__":
+    SlideCalc()
