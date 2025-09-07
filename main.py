@@ -6,7 +6,7 @@ import pyxel
 
 class SlideCalc:
     def __init__(self, scale_input=2):
-        pyxel.init(220, 270, title="Slide Calc", quit_key=pyxel.KEY_Q)
+        pyxel.init(210, 270, title="Slide Calc", quit_key=pyxel.KEY_Q)
 
         # --- 効果音 ---
         pyxel.sound(0).set("c3", "p", "7", "n", 5)  # 数字など
@@ -365,7 +365,7 @@ class SlideCalc:
         pyxel.cls(0)
 
         # ディスプレイ
-        pyxel.rect(10, 10, 200, 40, 1)
+        pyxel.rect(10, 10, 190, 40, 1)
         display_right, y_upper, y_lower = 200, 18, 30
 
         # 上段：中間結果 → 演算子
