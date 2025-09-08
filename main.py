@@ -5,8 +5,28 @@ import pyxel
 
 
 class SlideCalc:
-    def __init__(self, scale_input=2):
-        pyxel.init(210, 270, title="Slide Calc", quit_key=pyxel.KEY_Q)
+    def __init__(self, scale_input=2, use_sprite=False):
+        pyxel.init(215, 270, title="Slide Calc", quit_key=pyxel.KEY_Q)
+
+        pyxel.load("assets.pyxres")
+        self.sprite_coords = {
+            "7": (0, 0),
+            "8": (1, 0),
+            "9": (2, 0),
+            "/": (3, 0),
+            "4": (0, 1),
+            "5": (1, 1),
+            "6": (2, 1),
+            "*": (3, 1),
+            "1": (0, 2),
+            "2": (1, 2),
+            "3": (2, 2),
+            "-": (3, 2),
+            "0": (0, 3),
+            "D": (1, 3),
+            "=": (2, 3),
+            "+": (3, 3),
+        }
 
         # --- 効果音 ---
         pyxel.sound(0).set("c3", "p", "7", "n", 5)  # 数字など
@@ -47,6 +67,9 @@ class SlideCalc:
         self.solver_speed = 5
         self.solver_counter = 0
 
+        # 絵柄変更
+        self.delete_count = 0
+
         # 画面揺れ
         self.prev_digit_len = 0
         self.shake_timer = 0
@@ -54,6 +77,13 @@ class SlideCalc:
 
         # 表示設定
         self.scale_input = scale_input
+        self.use_sprite = use_sprite  # Trueにするとドット絵表示
+
+        # ボタンサイズ設定
+        self.SPRITE_TILE = 16
+        self.TILE_SIZE = 48
+        self.TILE_SPACING = self.TILE_SIZE + 1  # 49px間隔で1px余白
+
         pyxel.run(self.update, self.draw)
 
     # ============================================================
@@ -293,6 +323,14 @@ class SlideCalc:
         else:
             self.zero_count = 0
 
+        # Dを5連続入力したら絵柄変更
+        if label == "D":
+            self.delete_count += 1
+            if self.delete_count >= 10:
+                self.use_sprite = not self.use_sprite
+                self.delete_count = 0
+                # return
+
         if label in "0123456789.":
             self.current_number += label
 
@@ -338,8 +376,8 @@ class SlideCalc:
         if pyxel.btnp(pyxel.MOUSE_BUTTON_LEFT):
             for y in range(4):
                 for x in range(4):
-                    bx, by = 10 + x * 50, 60 + y * 50
-                    if bx <= mx <= bx + 40 and by <= my <= by + 40:
+                    bx, by = 10 + x * self.TILE_SPACING, 60 + y * self.TILE_SPACING
+                    if bx <= mx <= bx + self.TILE_SIZE and by <= my <= by + self.TILE_SIZE:
                         label = self.board[y][x]
                         if label == "=":
                             self.apply_input("=")
@@ -349,8 +387,8 @@ class SlideCalc:
         if pyxel.btnp(pyxel.MOUSE_BUTTON_LEFT) and not self.dragging:
             for y in range(4):
                 for x in range(4):
-                    bx, by = 10 + x * 50, 60 + y * 50
-                    if bx <= mx <= bx + 40 and by <= my <= by + 40:
+                    bx, by = 10 + x * self.TILE_SPACING, 60 + y * self.TILE_SPACING
+                    if bx <= mx <= bx + self.TILE_SIZE and by <= my <= by + self.TILE_SIZE:
                         empty = self.find_empty()
                         if empty and (x, y) in self.get_neighbors(*empty):
                             self.dragging = True
@@ -435,7 +473,7 @@ class SlideCalc:
         pyxel.cls(0)
 
         # ディスプレイ
-        pyxel.rect(10, 10, 190, 40, 1)
+        pyxel.rect(10, 10, 195, 40, 1)
         display_right, y_upper, y_lower = 200, 18, 30
 
         # 上段：中間結果 → 演算子
@@ -469,40 +507,71 @@ class SlideCalc:
                 if label == " ":
                     continue
 
-                bx, by = 10 + gx * 50, 60 + gy * 50
+                bx, by = 10 + gx * self.TILE_SPACING, 60 + gy * self.TILE_SPACING
+                if self.use_sprite:
+                    # debug
+                    # pyxel.rectb(bx, by, self.TILE_SIZE, self.TILE_SIZE, 8)
+                    # pyxel.circ(bx, by, 2, 11)
 
-                # 通常の背景色
-                color = (
-                    5
-                    if label in "0123456789."
-                    else 9 if label in "+-*/" else 8 if label in "CD" else 12 if label == "=" else 7
-                )
-                pyxel.rect(bx, by, 40, 40, color)
+                    u, v = self.sprite_coords[label]
+                    pyxel.blt(
+                        bx + self.SPRITE_TILE,
+                        by + self.SPRITE_TILE,
+                        0,
+                        u * self.SPRITE_TILE,
+                        v * self.SPRITE_TILE,
+                        self.SPRITE_TILE,
+                        self.SPRITE_TILE,
+                        colkey=0,
+                        scale=self.TILE_SIZE // self.SPRITE_TILE,
+                    )
 
-                # ===== 特殊処理： "=" の場合だけ赤枠点滅 =====
-                if label == "=":
-                    if (pyxel.frame_count // 10) % 2 == 0:  # 10フレームごとに点滅
-                        pyxel.rectb(bx, by, 40, 40, pyxel.COLOR_RED)
+                    # 「=」だけ赤枠点滅を追加
+                    if label == "=":
+                        if (pyxel.frame_count // 10) % 2 == 0:
+                            pyxel.rectb(bx, by, self.TILE_SIZE, self.TILE_SIZE, pyxel.COLOR_RED)
+                        else:
+                            pyxel.rectb(bx, by, self.TILE_SIZE, self.TILE_SIZE, 7)
                     else:
-                        pyxel.rectb(bx, by, 40, 40, 7)  # 通常枠
-                else:
-                    pyxel.rectb(bx, by, 40, 40, 7)
+                        pyxel.rectb(bx, by, self.TILE_SIZE, self.TILE_SIZE, 7)
 
-                # ラベル文字
-                pyxel.text(bx + 12, by + 14, label, 0)
-                pyxel.text(bx + 13, by + 15, label, 7)
+                else:
+                    # 通常の矩形描画
+                    color = (
+                        5
+                        if label in "0123456789."
+                        else 9 if label in "+-*/" else 8 if label in "CD" else 12 if label == "=" else 7
+                    )
+
+                    pyxel.rect(bx, by, self.TILE_SIZE, self.TILE_SIZE, color)
+                    if label == "=":
+                        if (pyxel.frame_count // 10) % 2 == 0:
+                            pyxel.rectb(bx, by, self.TILE_SIZE, self.TILE_SIZE, pyxel.COLOR_RED)
+                        else:
+                            pyxel.rectb(bx, by, self.TILE_SIZE, self.TILE_SIZE, 7)
+                    else:
+                        pyxel.rectb(bx, by, self.TILE_SIZE, self.TILE_SIZE, 7)
+                    # 中央寄せは TILE_SIZE 前提で計算
+                    text_x = bx + self.TILE_SIZE // 2 - 4
+                    text_y = by + self.TILE_SIZE // 2 - 4
+                    pyxel.text(text_x, text_y, label, 0)
+                    pyxel.text(text_x + 1, text_y + 1, label, 7)
 
         # ドラッグ中のタイル
         if self.dragging and self.drag_tile:
             mx, my = pyxel.mouse_x, pyxel.mouse_y
             sx, sy = self.drag_start
-            bx, by = 10 + sx * 50, 60 + sy * 50
+            bx, by = 10 + sx * self.TILE_SPACING, 60 + sy * self.TILE_SPACING
             if self.drag_dir == "x":
                 bx = mx - self.drag_offset[0]
             elif self.drag_dir == "y":
                 by = my - self.drag_offset[1]
-            pyxel.rectb(bx, by, 40, 40, 10)
-            pyxel.text(bx + 16, by + 16, self.drag_tile, 10)
+            # pyxel.rectb(bx, by, self.TILE_SIZE, self.TILE_SIZE, 10)
+            # pyxel.text(bx + self.TILE_SIZE // 3, by + self.TILE_SIZE // 3, self.drag_tile, 10)
+            pyxel.rectb(bx, by, self.TILE_SIZE, self.TILE_SIZE, 10)
+            text_x = bx + self.TILE_SIZE // 2 - 4
+            text_y = by + self.TILE_SIZE // 2 - 4
+            pyxel.text(text_x, text_y, self.drag_tile, 10)
 
         # マウスカーソル
         mx, my = pyxel.mouse_x, pyxel.mouse_y
@@ -513,4 +582,4 @@ class SlideCalc:
 
 
 if __name__ == "__main__":
-    SlideCalc()
+    SlideCalc(use_sprite=False)
