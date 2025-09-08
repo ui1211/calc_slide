@@ -566,8 +566,6 @@ class SlideCalc:
                 bx = mx - self.drag_offset[0]
             elif self.drag_dir == "y":
                 by = my - self.drag_offset[1]
-            # pyxel.rectb(bx, by, self.TILE_SIZE, self.TILE_SIZE, 10)
-            # pyxel.text(bx + self.TILE_SIZE // 3, by + self.TILE_SIZE // 3, self.drag_tile, 10)
             pyxel.rectb(bx, by, self.TILE_SIZE, self.TILE_SIZE, 10)
             text_x = bx + self.TILE_SIZE // 2 - 4
             text_y = by + self.TILE_SIZE // 2 - 4
