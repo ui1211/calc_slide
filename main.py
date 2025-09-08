@@ -47,6 +47,11 @@ class SlideCalc:
         self.solver_speed = 5
         self.solver_counter = 0
 
+        # 画面揺れ
+        self.prev_digit_len = 0
+        self.shake_timer = 0
+        self.shake_intensity = 0
+
         # 表示設定
         self.scale_input = scale_input
         pyxel.run(self.update, self.draw)
@@ -153,6 +158,33 @@ class SlideCalc:
         if y < 3:
             moves.append((x, y + 1))
         return moves
+
+    # ============================================================
+    # 演出関数：桁数変化による揺れ
+    # ============================================================
+    def trigger_shake_on_digit_change(self, value, threshold=3):
+        """final_scoreの桁数がthreshold以上に更新されたら揺れ開始"""
+        if value is None:
+            return
+        digit_len = len(str(int(value))) if isinstance(value, (int, float)) else len(str(value))
+
+        if digit_len > self.prev_digit_len and digit_len >= threshold:
+            # 揺れ開始
+            self.shake_timer = 10  # 揺れ継続フレーム数
+            self.shake_intensity = 2  # 揺れ幅（ピクセル）
+        self.prev_digit_len = digit_len
+
+    def apply_camera_shake(self):
+        """揺れが発生している場合にカメラをランダムに揺らす"""
+        if self.shake_timer > 0:
+            import random
+
+            dx = random.randint(-self.shake_intensity, self.shake_intensity)
+            dy = random.randint(-self.shake_intensity, self.shake_intensity)
+            pyxel.camera(dx, dy)
+            self.shake_timer -= 1
+        else:
+            pyxel.camera()  # リセット
 
     # ============================================================
     # 自動ソルバー（デバッグ）
@@ -269,6 +301,8 @@ class SlideCalc:
                 num = float(self.current_number)
                 self.result = num if self.result is None else self.compute(self.result, num, self.current_operator)
                 self.current_number = ""
+                self.final_score = self.result
+                self.trigger_shake_on_digit_change(self.final_score)
             self.current_operator = label
 
         elif label == "=":
@@ -348,8 +382,13 @@ class SlideCalc:
                     self.current_number = ""
                 self.final_score = self.result
                 self.equal_revealed = True
+                self.trigger_shake_on_digit_change(self.final_score)
 
                 pyxel.play(0, 2)
+
+        # スコア更新時に桁数をチェック
+        if self.final_score is not None:
+            self.trigger_shake_on_digit_change(self.final_score, threshold=3)
 
     # ============================================================
     # 描画処理
@@ -390,6 +429,9 @@ class SlideCalc:
                 pyxel.text(bx + 4, by + 4, goal_label, txt_col)
 
     def draw(self):
+        # カメラ揺れ適用
+        self.apply_camera_shake()
+
         pyxel.cls(0)
 
         # ディスプレイ
