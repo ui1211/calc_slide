@@ -361,6 +361,34 @@ class SlideCalc:
                 for sx in range(scale):
                     pyxel.text(x + i * 4 * scale + sx, y + sy, ch, col)
 
+    def draw_goal_preview(self, x=10, y=10, scale=0.5):
+        """右下などに正解配置のミニプレビューを表示"""
+        for gy in range(4):
+            for gx in range(4):
+                goal_label = self.goal[gy][gx]
+
+                # ゴール判定済みなら "=" を代入して表示
+                if self.equal_revealed and goal_label == " ":
+                    goal_label = "="
+
+                if goal_label == " ":
+                    continue
+
+                current_label = self.board[gy][gx]
+
+                # 色の決定
+                if current_label == goal_label:
+                    bg_col = 11  # 正解位置：水色系
+                    txt_col = 0
+                else:
+                    bg_col = 2  # 不一致：薄緑系
+                    txt_col = 6
+
+                bx = x + int(gx * 20 * scale)
+                by = y + int(gy * 20 * scale)
+                pyxel.rect(bx, by, int(18 * scale), int(18 * scale), bg_col)
+                pyxel.text(bx + 4, by + 4, goal_label, txt_col)
+
     def draw(self):
         pyxel.cls(0)
 
@@ -424,6 +452,9 @@ class SlideCalc:
         # マウスカーソル
         mx, my = pyxel.mouse_x, pyxel.mouse_y
         pyxel.circ(mx, my, 1, 7)
+
+        # --- 正解のミニプレビュー ---
+        self.draw_goal_preview(x=10, y=10, scale=0.5)
 
 
 if __name__ == "__main__":
