@@ -158,9 +158,12 @@ class SlideCalc:
     # 自動ソルバー（デバッグ）
     # ============================================================
     def auto_solve(self):
-        """A*探索で必ず正解に到達する手順を返す"""
+        """A*探索で必ず正解に到達する手順を返す（高速版）"""
         start = tuple(tuple(r) for r in self.board)
         goal = tuple(tuple(r) for r in self.goal)
+
+        # --- ゴール位置を事前に辞書化 ---
+        goal_pos = {goal[y][x]: (x, y) for y in range(4) for x in range(4)}
 
         # --- ヒューリスティック関数（マンハッタン距離 + 線形衝突）---
         def heuristic(state):
@@ -170,29 +173,26 @@ class SlideCalc:
                     tile = state[y][x]
                     if tile == " ":
                         continue
-                    # ゴール位置
-                    for gy in range(4):
-                        for gx in range(4):
-                            if goal[gy][gx] == tile:
-                                dist += abs(x - gx) + abs(y - gy)
-                                # --- 線形衝突 (同じ行や列で順序が逆のとき追加ペナルティ) ---
-                                if y == gy:
-                                    for xx in range(x + 1, 4):
-                                        other = state[y][xx]
-                                        if other != " ":
-                                            for gyy in range(4):
-                                                for gxx in range(4):
-                                                    if goal[gyy][gxx] == other and gyy == gy and gxx < gx:
-                                                        dist += 2
-                                if x == gx:
-                                    for yy in range(y + 1, 4):
-                                        other = state[yy][x]
-                                        if other != " ":
-                                            for gyy in range(4):
-                                                for gxx in range(4):
-                                                    if goal[gyy][gxx] == other and gxx == gx and gyy < gy:
-                                                        dist += 2
-                                break
+                    gx, gy = goal_pos[tile]
+                    dist += abs(x - gx) + abs(y - gy)
+
+                    # 線形衝突: 同じ行にいるけど順序が逆
+                    if y == gy:
+                        for xx in range(x + 1, 4):
+                            other = state[y][xx]
+                            if other != " ":
+                                gxx, gyy = goal_pos[other]
+                                if gyy == gy and gxx < gx:
+                                    dist += 2
+
+                    # 線形衝突: 同じ列にいるけど順序が逆
+                    if x == gx:
+                        for yy in range(y + 1, 4):
+                            other = state[yy][x]
+                            if other != " ":
+                                gxx, gyy = goal_pos[other]
+                                if gxx == gx and gyy < gy:
+                                    dist += 2
             return dist
 
         # --- open set (優先度付きキュー) ---
@@ -426,14 +426,27 @@ class SlideCalc:
                     continue
                 if label == " ":
                     continue
+
                 bx, by = 10 + gx * 50, 60 + gy * 50
+
+                # 通常の背景色
                 color = (
                     5
                     if label in "0123456789."
                     else 9 if label in "+-*/" else 8 if label in "CD" else 12 if label == "=" else 7
                 )
                 pyxel.rect(bx, by, 40, 40, color)
-                pyxel.rectb(bx, by, 40, 40, 7)
+
+                # ===== 特殊処理： "=" の場合だけ赤枠点滅 =====
+                if label == "=":
+                    if (pyxel.frame_count // 10) % 2 == 0:  # 10フレームごとに点滅
+                        pyxel.rectb(bx, by, 40, 40, pyxel.COLOR_RED)
+                    else:
+                        pyxel.rectb(bx, by, 40, 40, 7)  # 通常枠
+                else:
+                    pyxel.rectb(bx, by, 40, 40, 7)
+
+                # ラベル文字
                 pyxel.text(bx + 12, by + 14, label, 0)
                 pyxel.text(bx + 13, by + 15, label, 7)
 
